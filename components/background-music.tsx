@@ -9,48 +9,41 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function BackgroundMusic() {
   const [playing, setPlaying] = useState(false)
-  const [volume, setVolume] = useState(50)
+  const [volume, setVolume] = useState(30)
   const [showControls, setShowControls] = useState(false)
   const [audioLoaded, setAudioLoaded] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
-  // Create audio element
+  // Find existing audio element
   useEffect(() => {
-    // Only create the audio element on the client side
-    if (typeof window !== "undefined") {
-      try {
-        // Create an audio element
-        const audio = new Audio("/ambient-music.mp3")
+    // Try to find the background music element created by AudioManager
+    const findExistingAudio = () => {
+      const existingBgMusic = document.querySelector('audio[src="/ambient-music.mp3"]') as HTMLAudioElement
+      if (existingBgMusic) {
+        audioRef.current = existingBgMusic
+        setAudioLoaded(true)
 
-        // Set properties
-        audio.loop = true
-        audio.volume = volume / 100
-        audio.preload = "auto"
-
-        // Store the audio element in the ref
-        audioRef.current = audio
-
-        // Set loaded state after a short delay
-        setTimeout(() => {
-          setAudioLoaded(true)
-        }, 1000)
-
-        console.log("Audio initialized")
-      } catch (err) {
-        console.log("Audio setup completed")
-        setAudioLoaded(true) // Still allow UI to work
-      }
-
-      return () => {
-        if (audioRef.current) {
-          // Clean up
-          audioRef.current.pause()
-          audioRef.current = null
+        // Check if it's already playing
+        if (!existingBgMusic.paused) {
+          setPlaying(true)
         }
+
+        // Set initial volume
+        existingBgMusic.volume = volume / 100
+      } else {
+        // If not found, try again after a short delay
+        setTimeout(findExistingAudio, 1000)
       }
     }
-  }, [])
+
+    findExistingAudio()
+
+    return () => {
+      // Don't pause the audio on unmount, just remove the reference
+      audioRef.current = null
+    }
+  }, [volume])
 
   // Update volume when changed
   useEffect(() => {
@@ -61,27 +54,29 @@ export default function BackgroundMusic() {
 
   const togglePlay = () => {
     if (!audioRef.current) {
-      audioRef.current = new Audio("/ambient-music.mp3")
-      audioRef.current.loop = true
-      audioRef.current.volume = volume / 100
+      toast({
+        title: "Audio not available",
+        description: "Please reload the page to initialize audio.",
+      })
+      return
     }
 
     if (playing) {
       audioRef.current.pause()
       setPlaying(false)
     } else {
-      // Use promise to handle autoplay restrictions
       const playPromise = audioRef.current.play()
 
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log("Audio playback started successfully")
             setPlaying(true)
           })
-          .catch((error) => {
-            console.log("Playback initiated by user")
-            setPlaying(true)
+          .catch(() => {
+            toast({
+              title: "Playback failed",
+              description: "Please click anywhere on the page to enable audio.",
+            })
           })
       }
     }

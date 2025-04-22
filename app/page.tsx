@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import IntroAnimation from "@/components/intro-animation"
 import LoadingScreen from "@/components/loading-screen"
+import AudioManager from "@/components/audio-manager"
 import dynamic from "next/dynamic"
 
 // Dynamically import Dashboard to improve initial load time
@@ -15,6 +16,7 @@ export default function Home() {
   const [showIntro, setShowIntro] = useState(true)
   const [appReady, setAppReady] = useState(false)
   const [introCompleted, setIntroCompleted] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(false)
 
   // Register service worker for PWA
   useEffect(() => {
@@ -42,6 +44,11 @@ export default function Home() {
     }
   }, [])
 
+  // Enable audio after user interaction
+  const enableAudio = () => {
+    setAudioEnabled(true)
+  }
+
   // Check if intro has been shown before
   useEffect(() => {
     // Always show intro for better experience
@@ -60,12 +67,21 @@ export default function Home() {
 
   // If still showing intro, render the intro animation
   if (showIntro) {
-    return <IntroAnimation />
+    return (
+      <div onClick={enableAudio}>
+        <IntroAnimation />
+        {audioEnabled && <AudioManager playIntroSound={true} />}
+      </div>
+    )
   }
 
   // Render the main dashboard with Suspense for better loading performance
   return (
-    <main className="min-h-screen bg-gradient-to-br from-black via-red-950 to-red-900 p-4 md:p-8 transition-opacity duration-500 ease-in-out">
+    <main
+      className="min-h-screen bg-gradient-to-br from-black via-red-950 to-red-900 p-4 md:p-8 transition-opacity duration-500 ease-in-out"
+      onClick={enableAudio}
+    >
+      {audioEnabled && <AudioManager playIntroSound={false} />}
       <Suspense fallback={<LoadingScreen />}>
         <Dashboard />
       </Suspense>
